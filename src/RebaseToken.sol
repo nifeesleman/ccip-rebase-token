@@ -54,6 +54,15 @@ contract RebaseToken is ERC20 {
         emit interestRateSet(_newInterestRate);
     }
 
+/**
+ * @notice Gets the principle balance of a user (tokens actually minted to them), excluding any accrued interest.
+ * @param _user The address of the user.
+ * @return The principle balance of the user.
+ */
+function principleBalanceOf(address _user) external view returns (uint256) {
+    return super.balanceOf(_user); // Calls ERC20.balanceOf, which returns _balances[_user]
+}
+
     function mint(address _to, uint256 _amount) external {
         _mintAccuredInterest(_to);
         s_userInterestRate[_to] = s_interestRate;
