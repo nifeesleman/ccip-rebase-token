@@ -197,6 +197,14 @@ function transferFrom(address _sender,address _recipient, uint256 _amount) publi
 }
 
 /**
+ * @notice Gets the current global interest rate for the token.
+ * @return The current global interest rate.
+ */
+function getInterestRate() external view returns (uint256) {
+    return s_interestRate;
+}
+
+/**
 * @notice Gets the locked-in interest rate for a specific user.
 * @param _user The address of the user.
 * @return The user's specific interest rate.
