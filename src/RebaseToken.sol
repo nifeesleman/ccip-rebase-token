@@ -25,6 +25,7 @@ pragma solidity ^0.8.24;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
  * @title RebaseToken
@@ -34,10 +35,11 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
  * @notice Each user will have their own interest rate that is the global interest rate at the time of deposit.
  */
 
-contract RebaseToken is ERC20, Ownable{
+contract RebaseToken is ERC20, Ownable, AccessControl {
     error RebaseToken__InterestRateCanOnlyDecrease(uint256 oldInterestRate, uint256 newInterestRate);
 
     uint256 private s_interestRate = 5e10;
+    bytes32 public constant MINT_AND_BURN_ROLE = keccak256("MINT_AND_BURN_ROLE");
     uint256 private constant PRECISION_FACTOR = 1e18;
     mapping(address => uint256) private s_userInterestRate;
     mapping(address => uint256) private s_userLastUpdateTimestamp;
@@ -45,6 +47,10 @@ contract RebaseToken is ERC20, Ownable{
     event interestRateSet(uint256 newInterestRate);
 
     constructor() ERC20("Rebase Token", "RBT") Ownable(msg.sender){}
+
+function grantMintAndBurnRole(address _account) external onlyOwner {
+    _grantRole(MINT_AND_BURN_ROLE, _account);
+}
 
     function setInterestRate(uint256 _newInterestRate) external onlyOwner{
         // Set the interest rate
