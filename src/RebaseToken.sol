@@ -70,7 +70,7 @@ function principleBalanceOf(address _user) external view returns (uint256) {
     return super.balanceOf(_user); // Calls ERC20.balanceOf, which returns _balances[_user]
 }
 
-    function mint(address _to, uint256 _amount) external {
+    function mint(address _to, uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE) {
         _mintAccuredInterest(_to);
         s_userInterestRate[_to] = s_interestRate;
         // Mint tokens to the specified address
@@ -133,7 +133,7 @@ function principleBalanceOf(address _user) external view returns (uint256) {
         _mint(_user, balanceIncrease);
     }
 
-    function burn(address _from, uint256 _amount) external {
+    function burn(address _from, uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE) {
         if( _amount == typedef(uint256).max ) {
             // If the amount is max, burn all tokens
             _amount = balanceOf(_from);}
