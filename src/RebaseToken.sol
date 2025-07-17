@@ -24,8 +24,8 @@
 pragma solidity ^0.8.24;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
  * @title RebaseToken
@@ -34,7 +34,6 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
  * @notice The interest rate in the smart contract can only decrease.
  * @notice Each user will have their own interest rate that is the global interest rate at the time of deposit.
  */
-
 contract RebaseToken is ERC20, Ownable, AccessControl {
     error RebaseToken__InterestRateCanOnlyDecrease(uint256 oldInterestRate, uint256 newInterestRate);
 
@@ -46,13 +45,13 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
 
     event interestRateSet(uint256 newInterestRate);
 
-    constructor() ERC20("Rebase Token", "RBT") Ownable(msg.sender){}
+    constructor() ERC20("Rebase Token", "RBT") Ownable(msg.sender) {}
 
-function grantMintAndBurnRole(address _account) external onlyOwner {
-    _grantRole(MINT_AND_BURN_ROLE, _account);
-}
+    function grantMintAndBurnRole(address _account) external onlyOwner {
+        _grantRole(MINT_AND_BURN_ROLE, _account);
+    }
 
-    function setInterestRate(uint256 _newInterestRate) external onlyOwner{
+    function setInterestRate(uint256 _newInterestRate) external onlyOwner {
         // Set the interest rate
         if (_newInterestRate > s_interestRate) {
             revert RebaseToken__InterestRateCanOnlyDecrease(s_interestRate, _newInterestRate);
@@ -61,14 +60,14 @@ function grantMintAndBurnRole(address _account) external onlyOwner {
         emit interestRateSet(_newInterestRate);
     }
 
-/**
- * @notice Gets the principle balance of a user (tokens actually minted to them), excluding any accrued interest.
- * @param _user The address of the user.
- * @return The principle balance of the user.
- */
-function principleBalanceOf(address _user) external view returns (uint256) {
-    return super.balanceOf(_user); // Calls ERC20.balanceOf, which returns _balances[_user]
-}
+    /**
+     * @notice Gets the principle balance of a user (tokens actually minted to them), excluding any accrued interest.
+     * @param _user The address of the user.
+     * @return The principle balance of the user.
+     */
+    function principleBalanceOf(address _user) external view returns (uint256) {
+        return super.balanceOf(_user); // Calls ERC20.balanceOf, which returns _balances[_user]
+    }
 
     function mint(address _to, uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE) {
         _mintAccuredInterest(_to);
@@ -77,21 +76,21 @@ function principleBalanceOf(address _user) external view returns (uint256) {
         _mint(_to, _amount);
     }
 
-/**
-* @notice Returns the current balance of an account, including accrued interest.
-* @param _user The address of the account.
-* @return The total balance including interest.
-*/
+    /**
+     * @notice Returns the current balance of an account, including accrued interest.
+     * @param _user The address of the account.
+     * @return The total balance including interest.
+     */
     function balanceOf(address _user) public view override returns (uint256) {
         // Get the user's balance
         return super.balanceOf(_user) * _calculateUserAccumulatedInterestSinceLastUpdate(_user) / PRECISION_FACTOR;
     }
 
-/**
-* @dev Calculates the growth factor due to accumulated interest since the user's last update.
-* @param _user The address of the user.
-* @notice The growth factor, scaled by PRECISION_FACTOR. (e.g., 1.05x growth is 1.05 * 1e18).
-*/
+    /**
+     * @dev Calculates the growth factor due to accumulated interest since the user's last update.
+     * @param _user The address of the user.
+     * @notice The growth factor, scaled by PRECISION_FACTOR. (e.g., 1.05x growth is 1.05 * 1e18).
+     */
     function _calculateUserAccumulatedInterestSinceLastUpdate(address _user)
         internal
         view
@@ -134,88 +133,88 @@ function principleBalanceOf(address _user) external view returns (uint256) {
     }
 
     function burn(address _from, uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE) {
-        if( _amount == typedef(uint256).max ) {
+        if (_amount == type(uint256).max) {
             // If the amount is max, burn all tokens
-            _amount = balanceOf(_from);}
-    }
+            _amount = balanceOf(_from);
+        }
         // Burn the specified amount of tokens from the user's balance
         _mintAccuredInterest(_from);
         _burn(_from, _amount);
-        
-     }
-
-/**
- * @notice Transfers tokens from the caller to a recipient.
- * Accrued interest for both sender and recipient is minted before the transfer.
- * If the recipient is new, they inherit the sender's interest rate.
- * @param _recipient The address to transfer tokens to.
- * @param _amount The amount of tokens to transfer. Can be type(uint256).max to transfer full balance.
- * @return A boolean indicating whether the operation succeeded.
- */
-function transfer(address _recipient, uint256 _amount) public override returns (bool) {
-    // 1. Mint accrued interest for both sender and recipient
-    _mintAccruedInterest(msg.sender);
-    _mintAccruedInterest(_recipient);
-
-    // 2. Handle request to transfer maximum balance
-    if (_amount == type(uint256).max) {
-        _amount = balanceOf(msg.sender); // Use the interest-inclusive balance
     }
 
-    // 3. Set recipient's interest rate if they are new (balance is checked *before* super.transfer)
-    // We use balanceOf here to check the effective balance including any just-minted interest.
-    // If _mintAccruedInterest made their balance non-zero, but they had 0 principle, this still means they are "new" for rate setting.
-    // A more robust check for "newness" for rate setting might be super.balanceOf(_recipient) == 0 before any interest minting for the recipient.
-    // However, the current logic is: if their *effective* balance is 0 before the main transfer part, they get the sender's rate.
-    if (balanceOf(_recipient) == 0 && _amount > 0) { // Ensure _amount > 0 to avoid setting rate on 0-value initial transfer
-        s_userInterestRate[_recipient] = s_userInterestRate[msg.sender];
+    /**
+     * @notice Transfers tokens from the caller to a recipient.
+     * Accrued interest for both sender and recipient is minted before the transfer.
+     * If the recipient is new, they inherit the sender's interest rate.
+     * @param _recipient The address to transfer tokens to.
+     * @param _amount The amount of tokens to transfer. Can be type(uint256).max to transfer full balance.
+     * @return A boolean indicating whether the operation succeeded.
+     */
+    function transfer(address _recipient, uint256 _amount) public override returns (bool) {
+        // 1. Mint accrued interest for both sender and recipient
+        _mintAccuredInterest(msg.sender);
+        _mintAccuredInterest(_recipient);
+
+        // 2. Handle request to transfer maximum balance
+        if (_amount == type(uint256).max) {
+            _amount = balanceOf(msg.sender); // Use the interest-inclusive balance
+        }
+
+        // 3. Set recipient's interest rate if they are new (balance is checked *before* super.transfer)
+        // We use balanceOf here to check the effective balance including any just-minted interest.
+        // If _mintAccuredInterest made their balance non-zero, but they had 0 principle, this still means they are "new" for rate setting.
+        // A more robust check for "newness" for rate setting might be super.balanceOf(_recipient) == 0 before any interest minting for the recipient.
+        // However, the current logic is: if their *effective* balance is 0 before the main transfer part, they get the sender's rate.
+        if (balanceOf(_recipient) == 0 && _amount > 0) {
+            // Ensure _amount > 0 to avoid setting rate on 0-value initial transfer
+            s_userInterestRate[_recipient] = s_userInterestRate[msg.sender];
+        }
+
+        // 4. Execute the base ERC20 transfer
+        return super.transfer(_recipient, _amount);
     }
 
-    // 4. Execute the base ERC20 transfer
-    return super.transfer(_recipient, _amount);
-}
+    /**
+     * @notice Transfers tokens from one address to another, on behalf of the sender,
+     * provided an allowance is in place.
+     * Accrued interest for both sender and recipient is minted before the transfer.
+     * If the recipient is new, they inherit the sender's interest rate.
+     * @param _sender The address to transfer tokens from.
+     * @param _recipient The address to transfer tokens to.
+     * @param _amount The amount of tokens to transfer. Can be type(uint256).max to transfer full balance.
+     * @return A boolean indicating whether the operation succeeded.
+     */
+    function transferFrom(address _sender, address _recipient, uint256 _amount) public override returns (bool) {
+        // 1. Mint accrued interest for both sender and recipient
+        _mintAccuredInterest(_sender);
+        _mintAccuredInterest(_recipient);
 
+        // 2. Handle request to transfer maximum balance
+        if (_amount == type(uint256).max) {
+            _amount = balanceOf(_sender); // Use the interest-inclusive balance
+        }
 
-/**
- * @notice Transfers tokens from one address to another, on behalf of the sender,
- * provided an allowance is in place.
- * Accrued interest for both sender and recipient is minted before the transfer.
- * If the recipient is new, they inherit the sender's interest rate.
- * @param _sender The address to transfer tokens from.
- * @param _recipient The address to transfer tokens to.
- * @param _amount The amount of tokens to transfer. Can be type(uint256).max to transfer full balance.
- * @return A boolean indicating whether the operation succeeded.
- */
-function transferFrom(address _sender,address _recipient, uint256 _amount) public override returns (bool) {
-    // 1. Mint accrued interest for both sender and recipient
-    _mintAccruedInterest(_sender);
-    _mintAccruedInterest(_recipient);
+        if (balanceOf(_recipient) == 0 && _amount > 0) {
+            // Ensure _amount > 0 to avoid setting rate on 0-value initial transfer
+            s_userInterestRate[_recipient] = s_userInterestRate[_sender];
+        }
 
-    // 2. Handle request to transfer maximum balance
-    if (_amount == type(uint256).max) {
-        _amount = balanceOf(_sender); // Use the interest-inclusive balance
+        return super.transferFrom(_sender, _recipient, _amount);
     }
 
- if (balanceOf(_recipient) == 0 && _amount > 0) { // Ensure _amount > 0 to avoid setting rate on 0-value initial transfer
-        s_userInterestRate[_recipient] = s_userInterestRate[_sender];
+    /**
+     * @notice Gets the current global interest rate for the token.
+     * @return The current global interest rate.
+     */
+    function getInterestRate() external view returns (uint256) {
+        return s_interestRate;
     }
 
-    return super.transferFrom(_sender,_recipient, _amount);
-}
-
-/**
- * @notice Gets the current global interest rate for the token.
- * @return The current global interest rate.
- */
-function getInterestRate() external view returns (uint256) {
-    return s_interestRate;
-}
-
-/**
-* @notice Gets the locked-in interest rate for a specific user.
-* @param _user The address of the user.
-* @return The user's specific interest rate.
-*/
+    /**
+     * @notice Gets the locked-in interest rate for a specific user.
+     * @param _user The address of the user.
+     * @return The user's specific interest rate.
+     */
     function getUserInterestRate(address _user) external view returns (uint256) {
         // Return the user's interest rate
         // In this case, it is the global interest rate
