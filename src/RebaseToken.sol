@@ -47,10 +47,19 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
 
     constructor() ERC20("Rebase Token", "RBT") Ownable(msg.sender) {}
 
+    /**
+     * @notice Grants the MINT_AND_BURN_ROLE to a specified account.
+     * @param _account account to grant the role to
+     */
     function grantMintAndBurnRole(address _account) external onlyOwner {
         _grantRole(MINT_AND_BURN_ROLE, _account);
     }
 
+    /**
+     * @notice Sets the interest rate for the RebaseToken.
+     * @param _newInterestRate new interest rate to set
+     * @dev The interest rate can only decrease, not increase.
+     */
     function setInterestRate(uint256 _newInterestRate) external onlyOwner {
         // Set the interest rate
         if (_newInterestRate > s_interestRate) {
@@ -69,6 +78,11 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
         return super.balanceOf(_user); // Calls ERC20.balanceOf, which returns _balances[_user]
     }
 
+    /**
+     * @notice Mints new tokens to a specified address.
+     * @param _to user to mint tokens to
+     * @param _amount user minted amount
+     */
     function mint(address _to, uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE) {
         _mintAccuredInterest(_to);
         s_userInterestRate[_to] = s_interestRate;
@@ -132,6 +146,11 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
         _mint(_user, balanceIncrease);
     }
 
+    /**
+     * @notice Burns tokens from a specified address.
+     * @param _from user to burn tokens from
+     * @param _amount user burned amount
+     */
     function burn(address _from, uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE) {
         if (_amount == type(uint256).max) {
             // If the amount is max, burn all tokens
