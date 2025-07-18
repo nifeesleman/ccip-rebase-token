@@ -27,20 +27,18 @@ contract RebaseTokenTest is Test {
         // Grant the MINT_AND_BURN_ROLE to the Vault contract.
         // The grantMintAndBurnRole function expects an address.
         rebaseToken.grantMintAndBurnRole(address(vault));
-
-        // Send 1 ETH to the Vault to simulate initial funds.
-        // The target address must be cast to 'payable'.
-        (bool success,) = payable(address(vault)).call{value: 1 ether}("");
-        // It's good practice to handle the success flag, though omitted for brevity here.
-
-        // Stop impersonating the 'owner'
         vm.stopPrank();
+    }
+
+    function addRewardsToVault(uint256 rewardAmount) public {
+        (bool success,) = payable(address(vault)).call{value: rewardAmount}("");
+        // vm.assume(success); // Optionally, assume the transfer succeeds
     }
 
     // Test if interest accrues linearly after a deposit.
     // 'amount' will be a fuzzed input.
     function testDepositLinear(uint256 amount) public {
-        vm.assume(amount > 1e5);
+        // vm.assume(amount > 1e5);
         // Constrain the fuzzed 'amount' to a practical range.
         // Min: 0.00001 ETH (1e5 wei), Max: type(uint96).max to avoid overflows.
         amount = bound(amount, 1e5, type(uint96).max);
@@ -62,5 +60,25 @@ contract RebaseTokenTest is Test {
 
         assertApproxEqAbs(endBalance - middleBalance, middleBalance - startBalance, 1);
         vm.stopPrank(); // Stop impersonating 'user'
+    }
+
+    function testRedeemStraightAway(uint256 amount) public {
+        amount = bound(amount, 1e5, type(uint96).max);
+
+        // 1. User deposits 'amount' ETH
+        vm.startPrank(user); // Actions performed as 'user'
+        console.log("User's ETH balance before deposit:", user.balance);
+        vm.deal(user, amount);
+        vault.deposit{value: amount}();
+        uint256 startBalance = rebaseToken.balanceOf(user);
+        assertEq(startBalance, amount);
+        console.log("User's ETH balance before redeem:", user.balance);
+
+        vault.redeem(amount);
+        uint256 endBalance = rebaseToken.balanceOf(user);
+        assertEq(endBalance, 0);
+        console.log("User's ETH balance after redeem:", user.balance);
+        assertEq(address(user).balance, amount);
+        vm.stopPrank(); //
     }
 }
