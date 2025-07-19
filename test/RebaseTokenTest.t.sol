@@ -5,6 +5,8 @@ import {Test, console} from "forge-std/Test.sol";
 import {RebaseToken} from "../src/RebaseToken.sol";
 import {Vault} from "../src/Vault.sol";
 import {IRebaseToken} from "../src/interfaces/IRebaseToken.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract RebaseTokenTest is Test {
     RebaseToken private rebaseToken;
@@ -100,5 +102,108 @@ contract RebaseTokenTest is Test {
         uint256 ethBalance = address(user).balance;
         assertEq(ethBalance, balanceAfterSomeTime);
         assertGt(ethBalance, depositAmount);
+    }
+
+    function testTransfer(uint256 amount, uint256 amountToSend) public {
+        amount = bound(amount, 1e5 + 1e5, type(uint96).max);
+        amountToSend = bound(amountToSend, 1e5, amount - 1e5);
+        // 1. User deposits 'amount' ETH
+        vm.deal(user, amount);
+        vm.prank(user);
+        vault.deposit{value: amount}();
+
+        address user2 = makeAddr("user2");
+        uint256 userBalance = rebaseToken.balanceOf(user);
+        uint256 user2BalanceBefore = rebaseToken.balanceOf(user2);
+        assertEq(user2BalanceBefore, 0);
+        assertEq(userBalance, amount);
+
+        // owner decreases interest rate
+        vm.prank(owner);
+        rebaseToken.setInterestRate(4e10);
+
+        // 2. User transfers 'amountToSend' to 'user2'
+        vm.prank(user);
+        rebaseToken.transfer(user2, amountToSend);
+        uint256 user2BalanceAfter = rebaseToken.balanceOf(user2);
+        assertEq(user2BalanceAfter, amountToSend);
+        uint256 userBalanceAfter = rebaseToken.balanceOf(user);
+        assertEq(userBalanceAfter, amount - amountToSend);
+
+        // check if interest rate is still 4e10
+        assertEq(rebaseToken.getUserInterestRate(user), 5e10);
+        assertEq(rebaseToken.getUserInterestRate(user2), 5e10);
+        // vm.stopPrank();
+    }
+
+    function testCannotSetTheInterestRate(uint256 newInterestRate) public {
+        vm.prank(user);
+        vm.expectPartialRevert(bytes4(Ownable.OwnableUnauthorizedAccount.selector));
+        rebaseToken.setInterestRate(newInterestRate);
+    }
+
+    function testcannotCallMintAndBurn() public {
+        vm.prank(user);
+        vm.expectPartialRevert(bytes4(IAccessControl.AccessControlUnauthorizedAccount.selector));
+        rebaseToken.mint(user, 100);
+        vm.expectPartialRevert(bytes4(IAccessControl.AccessControlUnauthorizedAccount.selector));
+        rebaseToken.burn(user, 100);
+    }
+
+    function testGetRebaseTokenAddress() public {
+        assertEq(vault.getRebaseToken(), address(rebaseToken));
+    }
+
+    function testprincipleBalanceOf(uint256 amount) public {
+        amount = bound(amount, 1e5, type(uint96).max);
+        vm.deal(user, amount);
+        vm.prank(user);
+        vault.deposit{value: amount}();
+        uint256 principleBalance = rebaseToken.principleBalanceOf(user);
+        assertEq(principleBalance, amount);
+        vm.warp(block.timestamp + 1 hours);
+        uint256 newPrincipleBalance = rebaseToken.principleBalanceOf(user);
+        assertEq(newPrincipleBalance, amount);
+    }
+
+    function testInterestRateCanOnlyDecrease(uint256 newInterestRate) public {
+        uint256 initialInterestRate = rebaseToken.getInterestRate();
+        newInterestRate = bound(newInterestRate, initialInterestRate, type(uint96).max);
+        vm.prank(owner);
+        vm.expectPartialRevert(bytes4(RebaseToken.RebaseToken__InterestRateCanOnlyDecrease.selector));
+        rebaseToken.setInterestRate(newInterestRate);
+        assertEq(rebaseToken.getInterestRate(), initialInterestRate);
+    }
+
+    function testGrantMintAndBurnRole() public {
+        // Grant the MINT_AND_BURN_ROLE to the Vault contract.
+        vm.prank(owner);
+        rebaseToken.grantMintAndBurnRole(address(vault));
+        assertTrue(rebaseToken.hasRole(rebaseToken.MINT_AND_BURN_ROLE(), address(vault)));
+    }
+
+    function testTransferFrom(address _sender, address _recipient, uint256 _amount) public {
+        _sender = makeAddr("sender");
+        _recipient = makeAddr("recipient");
+        _amount = bound(_amount, 1e5, type(uint96).max);
+
+        // 1. User deposits 'amount' ETH
+        vm.deal(_sender, _amount);
+        vm.prank(_sender);
+        vault.deposit{value: _amount}();
+
+        // 2. Approve the recipient to transfer tokens on behalf of the sender
+        vm.prank(_sender);
+        rebaseToken.approve(_recipient, _amount);
+
+        // 3. Transfer tokens from sender to recipient
+        vm.prank(_recipient);
+        rebaseToken.transferFrom(_sender, _recipient, _amount);
+
+        uint256 senderBalanceAfter = rebaseToken.balanceOf(_sender);
+        uint256 recipientBalanceAfter = rebaseToken.balanceOf(_recipient);
+
+        assertEq(senderBalanceAfter, 0);
+        assertEq(recipientBalanceAfter, _amount);
     }
 }
