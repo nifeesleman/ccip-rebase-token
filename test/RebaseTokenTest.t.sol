@@ -34,7 +34,7 @@ contract RebaseTokenTest is Test {
 
     function addRewardsToVault(uint256 rewardAmount) public {
         (bool success,) = payable(address(vault)).call{value: rewardAmount}("");
-        // vm.assume(success); // Optionally, assume the transfer succeeds
+        vm.assume(success); // Optionally, assume the transfer succeeds
     }
 
     // Test if interest accrues linearly after a deposit.
@@ -64,6 +64,13 @@ contract RebaseTokenTest is Test {
         vm.stopPrank(); // Stop impersonating 'user'
     }
 
+    function testDepositRevertsOnZeroValue() public {
+        vm.deal(user, 1 ether); // give user some ETH
+        vm.prank(user);
+        vm.expectRevert(Vault.Vault_DepositAmountIsZero.selector);
+        vault.deposit{value: 0}();
+    }
+
     function testRedeemStraightAway(uint256 amount) public {
         amount = bound(amount, 1e5, type(uint96).max);
 
@@ -82,6 +89,35 @@ contract RebaseTokenTest is Test {
         console.log("User's ETH balance after redeem:", user.balance);
         assertEq(address(user).balance, amount);
         vm.stopPrank(); //
+    }
+
+    function testRedeemAllTokens() public {
+        uint256 depositAmount = 1 ether;
+        vm.deal(user, depositAmount);
+        vm.prank(user);
+        vault.deposit{value: depositAmount}();
+
+        uint256 balanceBefore = user.balance;
+
+        vm.prank(user);
+        vault.redeem(type(uint256).max);
+
+        assertEq(user.balance, balanceBefore + depositAmount);
+        assertEq(rebaseToken.balanceOf(user), 0);
+    }
+
+    function testRedeemPartialAmount() public {
+        uint256 depositAmount = 2 ether;
+        vm.deal(user, depositAmount);
+        vm.prank(user);
+        vault.deposit{value: depositAmount}();
+
+        uint256 redeemAmount = 1 ether;
+        vm.prank(user);
+        vault.redeem(redeemAmount);
+
+        assertEq(rebaseToken.balanceOf(user), depositAmount - redeemAmount);
+        assertEq(user.balance, redeemAmount); // if user started at 0
     }
 
     function testRedeemAfterTimePassed(uint256 depositAmount, uint256 time) public {
@@ -150,7 +186,7 @@ contract RebaseTokenTest is Test {
         rebaseToken.burn(user, 100);
     }
 
-    function testGetRebaseTokenAddress() public {
+    function testGetRebaseTokenAddress() public view {
         assertEq(vault.getRebaseToken(), address(rebaseToken));
     }
 
