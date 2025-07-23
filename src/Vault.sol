@@ -29,7 +29,8 @@ contract Vault {
         if (amountToMint == 0) {
             revert Vault_DepositAmountIsZero();
         }
-        i_rebaseToken.mint(msg.sender, amountToMint);
+        uint256 interestRate = i_rebaseToken.getInterestRate();
+        i_rebaseToken.mint(msg.sender, amountToMint, interestRate);
         emit Deposit(msg.sender, amountToMint);
     }
 
