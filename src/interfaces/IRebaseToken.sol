@@ -8,7 +8,7 @@ interface IRebaseToken {
      * @param _to The address to mint tokens to.
      * @param _amount The amount of tokens to mint.
      */
-    function mint(address _to, uint256 _amount) external;
+    function mint(address _to, uint256 _amount, uint256 _interestRate) external;
 
     /**
      * @notice Burns tokens from a specified address.
@@ -17,6 +17,7 @@ interface IRebaseToken {
      */
     function burn(address _from, uint256 _amount) external;
     function balanceOf(address _account) external view returns (uint256);
+    function getUserInterestRate(address _user) external view returns (uint256);
     function getInterestRate() external view returns (uint256);
 
     // Note: We only include functions that the Vault contract will call.
