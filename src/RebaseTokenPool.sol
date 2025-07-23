@@ -21,10 +21,10 @@ contract RebaseTokenPool is TokenPool {
         _validateLockOrBurn(lockOrBurnIn);
 
         // Decode the original sender's address
-        address originalSender = abi.decode(lockOrBurnIn.originalSender, (address));
+        address receiver = abi.decode(lockOrBurnIn.receiver, (address));
 
         // Fetch the user's current interest rate from the rebase token
-        uint256 userInterestRate = IRebaseToken(address(i_token)).getUserInterestRate(originalSender);
+        uint256 userInterestRate = IRebaseToken(address(i_token)).getUserInterestRate(receiver);
 
         // Burn the specified amount of tokens from this pool contract
         // CCIP transfers tokens to the pool before lockOrBurn is called
