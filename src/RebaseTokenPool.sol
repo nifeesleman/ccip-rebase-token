@@ -3,15 +3,38 @@ pragma solidity ^0.8.24;
 
 import {TokenPool} from "@ccip/contracts/src/v0.8/ccip/pools/TokenPool.sol";
 import {IERC20} from "@ccip/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
-import {IRebaseToken} from "../../interfaces/IRebaseToken.sol"; // Adjust path if your interface is elsewhere
+import {IRebaseToken} from "./interfaces/IRebaseToken.sol"; // Adjust path if your interface is elsewhere
 import {Pool} from "@ccip/contracts/src/v0.8/ccip/libraries/Pool.sol"; // For CCIP structs
 
 contract RebaseTokenPool is TokenPool {
     constructor(IERC20 _token, address[] memory _allowlist, address _rnmProxy, address _router)
-        TokenPool(_token, 18, _allowlist, _rnmProxy, _router)
+        TokenPool(_token, _allowlist, _rnmProxy, _router)
     {
         // Constructor body (if any additional logic is needed)
     }
 
-    // We will implement lockOrBurn and releaseOrMint functions next
+    function lockOrBurn(Pool.LockOrBurnInV1 calldata lockOrBurnIn)
+        external
+        override
+        returns (Pool.LockOrBurnOutV1 memory lockOrBurnOut)
+    {
+        _validateLockOrBurn(lockOrBurnIn);
+
+        // Decode the original sender's address
+        address originalSender = abi.decode(lockOrBurnIn.originalSender, (address));
+
+        // Fetch the user's current interest rate from the rebase token
+        uint256 userInterestRate = IRebaseToken(address(i_token)).getUserInterestRate(originalSender);
+
+        // Burn the specified amount of tokens from this pool contract
+        // CCIP transfers tokens to the pool before lockOrBurn is called
+        IRebaseToken(address(i_token)).burn(address(this), lockOrBurnIn.amount);
+
+        // Prepare the output data for CCIP
+        lockOrBurnOut = Pool.LockOrBurnOutV1({
+            destTokenAddress: getRemoteToken(lockOrBurnIn.remoteChainSelector),
+            destPoolData: abi.encode(userInterestRate) // Encode the interest rate to send cross-chain
+        });
+        // No explicit return statement is needed due to the named return variable
+    }
 }
