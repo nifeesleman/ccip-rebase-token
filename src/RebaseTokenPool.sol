@@ -37,4 +37,28 @@ contract RebaseTokenPool is TokenPool {
         });
         // No explicit return statement is needed due to the named return variable
     }
+
+    function releaseOrMint(Pool.ReleaseOrMintInV1 calldata releaseOrMintIn)
+        external
+        override
+        returns (Pool.ReleaseOrMintOutV1 memory /* releaseOrMintOut */ )
+    {
+        // Named return optional
+        _validateReleaseOrMint(releaseOrMintIn);
+
+        // Decode the user interest rate sent from the source pool
+        uint256 userInterestRate = abi.decode(releaseOrMintIn.sourcePoolData, (uint256));
+
+        // The receiver address is directly available
+        address receiver = releaseOrMintIn.receiver;
+
+        // Mint tokens to the receiver, applying the propagated interest rate
+        IRebaseToken(address(i_token)).mint(
+            receiver,
+            releaseOrMintIn.amount,
+            userInterestRate // Pass the interest rate to the rebase token's mint function
+        );
+
+        return Pool.ReleaseOrMintOutV1({destinationAmount: releaseOrMintIn.amount});
+    }
 }
