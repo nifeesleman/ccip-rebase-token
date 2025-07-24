@@ -12,6 +12,10 @@ contract CrossChainTest is Test {
     uint256 sepoliaFork;
     uint256 arbSepoliaFork;
     CCIPLocalSimulatorFork ccipLocalSimulatorFork;
+    RebaseToken sepoliaToken;
+    RebaseToken arbSepoliaToken;
+
+    Vault vault;
 
     function setUp() public {
         // 1. Create and select the initial (source) fork (Sepolia)
@@ -29,5 +33,16 @@ contract CrossChainTest is Test {
         // This is crucial so both the Sepolia and Arbitrum Sepolia forks
         // can interact with the *same* instance of the simulator.
         vm.makePersistent(address(ccipLocalSimulatorFork));
+
+        vm.startPrank(owner);
+        sepoliaToken = new RebaseToken();
+        vault = new Vault(IRebaseToken(address(sepoliaToken)));
+        vm.stopPrank();
+
+        vm.selectFork(arbSepoliaFork);
+        arbSepoliaToken = new RebaseToken();
+
+        vm.startPrank(owner);
+        vm.stopPrank();
     }
 }
