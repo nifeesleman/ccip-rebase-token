@@ -179,11 +179,18 @@ contract RebaseTokenTest is Test {
     }
 
     function testcannotCallMintAndBurn() public {
+        uint256 rate = rebaseToken.getInterestRate();
         vm.prank(user);
         vm.expectPartialRevert(bytes4(IAccessControl.AccessControlUnauthorizedAccount.selector));
-        rebaseToken.mint(user, 100);
+        rebaseToken.mint(user, 100, rate);
         vm.expectPartialRevert(bytes4(IAccessControl.AccessControlUnauthorizedAccount.selector));
         rebaseToken.burn(user, 100);
+    }
+
+    function testInterestRate() public view {
+        uint256 expected = 5e10;
+        uint256 actual = rebaseToken.getInterestRate();
+        assertEq(actual, expected, "Interest rate is incorrect");
     }
 
     function testGetRebaseTokenAddress() public view {
