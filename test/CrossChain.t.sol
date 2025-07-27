@@ -9,10 +9,14 @@ import {RebaseTokenPool} from "../src/RebaseTokenPool.sol";
 import {IRebaseToken} from "../src/interfaces/IRebaseToken.sol";
 import {IERC20} from "@ccip/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
 import {TokenAdminRegistry} from "@ccip/contracts/src/v0.8/ccip/tokenAdminRegistry/TokenAdminRegistry.sol";
+import {RateLimiter} from "@ccip/contracts/src/v0.8/ccip/libraries/RateLimiter.sol";
+import {TokenPool} from "@ccip/contracts/src/v0.8/ccip/pools/TokenPool.sol";
+import {RegistryModuleOwnerCustom} from "@ccip/contracts/src/v0.8/ccip/tokenAdminRegistry/RegistryModuleOwnerCustom.sol";
 
 contract CrossChainTest is Test {
     uint256 sepoliaFork;
     uint256 arbSepoliaFork;
+    address owner;
     CCIPLocalSimulatorFork ccipLocalSimulatorFork;
     RebaseToken sepoliaToken;
     RebaseToken arbSepoliaToken;
@@ -32,7 +36,7 @@ contract CrossChainTest is Test {
         // 2. Create the destination fork (Arbitrum Sepolia) but don't select it yet
         // This uses the "arb-sepolia" alias defined in foundry.toml
         arbSepoliaFork = vm.createFork("arb-sepolia");
-
+        owner = makeAddr("owner");
         // 3. Deploy the CCIP Local Simulator contract
         ccipLocalSimulatorFork = new CCIPLocalSimulatorFork();
 
@@ -80,7 +84,43 @@ contract CrossChainTest is Test {
         TokenAdminRegistry(arbSepoliaNetworkDetails.tokenAdminRegistryAddress).setPool(
             address(arbSepoliaToken), address(arbSepoliaPool)
         );
+        // configureTokenPool(
+        //     sepoliaFork, // Local chain: Sepolia
+        //     address(sepoliaPool), // Local pool: Sepolia's TokenPool
+        //     arbSepoliaNetworkDetails.chainSelector, // Remote chain selector: Arbitrum Sepolia's
+        //     address(arbSepoliaPool), // Remote pool address: Arbitrum Sepolia's TokenPool
+        //     address(arbSepoliaToken) // Remote token address: Arbitrum Sepolia's Token
+        // );
         vm.startPrank(owner);
         vm.stopPrank();
+    }
+
+    function configureTokenPool(
+        uint256 fork,
+        address localPoolAddress,
+        uint64 remoteChainSelector,
+        address remotePool,
+        address remotePoolAddress,
+        address remoteTokenAddress,
+        RateLimiter.Config memory outboundRateLimiterConfig,
+        RateLimiter.Config memory inboundRateLimiterConfig
+    ) public {
+        vm.selectFork(fork);
+
+        uint64[] memory remoteChainSelectorsToRemove = new uint64[](0);
+        TokenPool.ChainUpdate[] memory chainsToAdd = new TokenPool.ChainUpdate[](1);
+
+        bytes[] memory remotePoolAddressesBytesArray = new bytes[](1);
+        remotePoolAddressesBytesArray[0] = abi.encode(remotePoolAddress);
+        chainsToAdd[0] = TokenPool.ChainUpdate({
+            remoteChainSelector: remoteChainSelector,
+            allowed: true,
+            remotePoolAddresses: abi.encode(remotePoolAddressesBytesArray),
+            remoteTokenAddress: abi.encode(remoteTokenAddress),
+            outboundRateLimiterConfig: RateLimiter.Config({isEnabled: false, capacity: 0, rate: 0}),
+            inboundRateLimiterConfig: RateLimiter.Config({isEnabled: false, capacity: 0, rate: 0})
+        });
+        vm.prank(owner);
+        TokenPool(localPoolAddress).applyChainUpdates(remoteChainSelectorsToRemove, chainsToAdd);
     }
 }
