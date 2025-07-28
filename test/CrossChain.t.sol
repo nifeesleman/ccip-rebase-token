@@ -95,32 +95,32 @@ contract CrossChainTest is Test {
         vm.stopPrank();
     }
 
-    function configureTokenPool(
-        uint256 fork,
-        address localPoolAddress,
-        uint64 remoteChainSelector,
-        address remotePool,
-        address remotePoolAddress,
-        address remoteTokenAddress,
-        RateLimiter.Config memory outboundRateLimiterConfig,
-        RateLimiter.Config memory inboundRateLimiterConfig
-    ) public {
-        vm.selectFork(fork);
+    // function configureTokenPool(
+    //     uint256 fork,
+    //     address localPoolAddress,
+    //     uint64 remoteChainSelector,
+    //     address remotePool,
+    //     address remotePoolAddress,
+    //     address remoteTokenAddress,
+    //     RateLimiter.Config memory outboundRateLimiterConfig,
+    //     RateLimiter.Config memory inboundRateLimiterConfig
+    // ) public {
+    //     vm.selectFork(fork);
 
-        uint64[] memory remoteChainSelectorsToRemove = new uint64[](0);
-        TokenPool.ChainUpdate[] memory chainsToAdd = new TokenPool.ChainUpdate[](1);
+    //     uint64[] memory remoteChainSelectorsToRemove = new uint64[](0);
+    //     TokenPool.ChainUpdate[] memory chainsToAdd = new TokenPool.ChainUpdate[](1);
 
-        bytes[] memory remotePoolAddressesBytesArray = new bytes[](1);
-        remotePoolAddressesBytesArray[0] = abi.encode(remotePoolAddress);
-        chainsToAdd[0] = TokenPool.ChainUpdate({
-            remoteChainSelector: remoteChainSelector,
-            allowed: true,
-            remotePoolAddresses: abi.encode(remotePoolAddressesBytesArray),
-            remoteTokenAddress: abi.encode(remoteTokenAddress),
-            outboundRateLimiterConfig: RateLimiter.Config({isEnabled: false, capacity: 0, rate: 0}),
-            inboundRateLimiterConfig: RateLimiter.Config({isEnabled: false, capacity: 0, rate: 0})
-        });
-        vm.prank(owner);
-        TokenPool(localPoolAddress).applyChainUpdates(remoteChainSelectorsToRemove, chainsToAdd);
-    }
+    //     bytes[] memory remotePoolAddressesBytesArray = new bytes[](1);
+    //     remotePoolAddressesBytesArray[0] = abi.encode(remotePoolAddress);
+    //     chainsToAdd[0] = TokenPool.ChainUpdate({
+    //         remoteChainSelector: remoteChainSelector,
+    //         allowed: true,
+    //         remotePoolAddresses: abi.encode(remotePoolAddressesBytesArray),
+    //         remoteTokenAddress: abi.encode(remoteTokenAddress),
+    //         outboundRateLimiterConfig: RateLimiter.Config({isEnabled: false, capacity: 0, rate: 0}),
+    //         inboundRateLimiterConfig: RateLimiter.Config({isEnabled: false, capacity: 0, rate: 0})
+    //     });
+    //     vm.prank(owner);
+    //     TokenPool(localPoolAddress).applyChainUpdates(remoteChainSelectorsToRemove, chainsToAdd);
+    // }
 }
